@@ -165,10 +165,11 @@
             </div>
 
             <!-- 캔버스 컨테이너 (스크롤 가능) -->
-            <div id="workspaceContainer" class="flex-1 overflow-auto bg-gray-200 border border-gray-300 rounded-lg relative">
-                <!-- 스크롤 영역을 만들어주는 래퍼 -->
-                <div id="workspaceWrapper" class="absolute top-0 left-0 min-w-full min-h-full flex items-center justify-center p-4">
-                    <div id="workspace" class="workspace-grid relative bg-white shadow-md transform-gpu" style="width: 800px; height: 600px; transform-origin: top left;">
+            <div id="workspaceContainer" class="flex-1 overflow-auto bg-gray-200 border border-gray-300 rounded-lg p-4 flex">
+                <!-- 실제 줌 배율이 반영된 크기만큼 공간을 차지하여 스크롤과 중앙 정렬을 돕는 투명 홀더 -->
+                <div id="workspaceSizer" class="relative m-auto flex-shrink-0" style="width: 800px; height: 600px;">
+                    <!-- 실제 캔버스 작업 영역 (크기 고정 + CSS transform으로 스케일링) -->
+                    <div id="workspace" class="workspace-grid absolute top-0 left-0 bg-white shadow-md transform-gpu" style="width: 800px; height: 600px; transform-origin: top left;">
                         <!-- GIF 아이템들이 여기에 추가됩니다 -->
                     </div>
                 </div>
@@ -206,7 +207,7 @@
 
         // --- DOM 요소 ---
         const workspace = document.getElementById('workspace');
-        const workspaceWrapper = document.getElementById('workspaceWrapper');
+        const workspaceSizer = document.getElementById('workspaceSizer');
         const workspaceContainer = document.getElementById('workspaceContainer');
         const canvasWidthInput = document.getElementById('canvasWidth');
         const canvasHeightInput = document.getElementById('canvasHeight');
@@ -285,16 +286,14 @@
         }
 
         function updateZoomWrapper() {
-            // 확대/축소 시 래퍼의 크기도 키워주어 스크롤바가 정상적으로 나타나도록 함
-            // 패딩(2rem = 32px)을 고려하여 최소 크기를 잡아줍니다.
+            // 확대/축소 시 sizer의 크기를 조절하여 스크롤 및 중앙 정렬이 시각적으로 어긋나지 않게 함
             const scaledWidth = workspaceParams.width * workspaceZoom;
             const scaledHeight = workspaceParams.height * workspaceZoom;
             
-            // 컨테이너 크기보다 캔버스가 작을 때 중앙 정렬을 위해 
-            // transform-origin을 동적으로 조절할 필요 없이
-            // wrapper의 크기 자체를 강제하여 flex 중앙 정렬이 먹히게 합니다.
-            workspaceWrapper.style.width = `${scaledWidth + 32}px`;
-            workspaceWrapper.style.height = `${scaledHeight + 32}px`;
+            if (workspaceSizer) {
+                workspaceSizer.style.width = `${scaledWidth}px`;
+                workspaceSizer.style.height = `${scaledHeight}px`;
+            }
         }
 
         function fitZoomToContainer() {
