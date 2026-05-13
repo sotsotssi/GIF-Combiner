@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GIF 이어붙이기 툴</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.js"></script>
+    <style>
+        .workspace-grid {
+            background-image: 
+                linear-gradient(45deg, #e5e7eb 25%, transparent 25%, transparent 75%, #e5e7eb 75%, #e5e7eb),
+                linear-gradient(45deg, #e5e7eb 25%, transparent 25%, transparent 75%, #e5e7eb 75%, #e5e7eb);
+            background-size: 20px 20px;
+            background-position: 0 0, 10px 10px;
+        }
+        .gif-item {
+            touch-action: none;
+            user-select: none;
+        }
+        .resize-handle {
+            width: 12px;
+            height: 12px;
+            background: #3b82f6;
+            position: absolute;
+            right: -6px;
+            bottom: -6px;
+            cursor: se-resize;
+            border-radius: 50%;
+            z-index: 10;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 min-h-screen p-6 font-sans">
+    <div class="max-w-6xl mx-auto bg-white rounded-xl shadow-lg overflow-hidden flex flex-col md:flex-row">
+        
+        <!-- 왼쪽: 설정 패널 -->
+        <div class="w-full md:w-80 bg-gray-100 p-6 flex flex-col gap-6 border-r border-gray-200 overflow-y-auto">
+            <div>
+                <h1 class="text-xl font-bold text-gray-900 mb-1">GIF 합성기</h1>
+                <p class="text-sm text-gray-600">여러 GIF의 프레임을 동기화하여 하나로 합칩니다.</p>
+            </div>
+
+            <!-- 파일 업로드 -->
+            <div class="space-y-2">
+                <label class="block text-sm font-medium text-gray-700">GIF 추가</label>
+                <div class="flex items-center justify-center w-full">
+                    <label class="flex flex-col items-center justify-center w-full h-24 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100">
+                        <div class="flex flex-col items-center justify-center pt-5 pb-6">
+                            <p class="text-sm text-gray-500"><span class="font-semibold">클릭하여 파일 선택</span></p>
+                        </div>
+                        <input type="file" id="fileInput" accept="image/gif" multiple class="hidden" />
+                    </label>
+                </div>
+            </div>
+
+            <!-- 업로드된 파일 목록 (순서 정렬) -->
+            <div class="space-y-2">
+                <div class="flex justify-between items-end">
+                    <label class="block text-sm font-medium text-gray-700">파일 목록</label>
+                    <span class="text-xs text-gray-400">위아래 정렬 가능</span>
+                </div>
+                <ul id="fileList" class="space-y-1 max-h-32 overflow-y-auto border border-gray-200 rounded p-2 bg-white empty:hidden">
+                    <!-- 스크립트로 추가됨 -->
+                </ul>
+            </div>
+
+            <!-- 화면 설정 -->
+            <div class="space-y-3">
+                <h3 class="text-sm font-medium text-gray-700 border-b pb-1">화면 설정 (px)</h3>
+                <div class="flex gap-2">
+                    <div class="flex-1">
+                        <label class="block text-xs text-gray-500">가로 (Width)</label>
+                        <input type="number" id="canvasWidth" value="800" class="w-full mt-1 p-2 border rounded focus:ring-blue-500 focus:border-blue-500 text-sm">
+                    </div>
+                    <div class="flex-1">
+                        <label class="block text-xs text-gray-500">세로 (Height)</label>
+                        <input type="number" id="canvasHeight" value="600" class="w-full mt-1 p-2 border rounded focus:ring-blue-500 focus:border-blue-500 text-sm">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 그리드 정렬 설정 -->
+            <div class="space-y-3">
+                <h3 class="text-sm font-medium text-gray-700 border-b pb-1">그리드 자동 정렬</h3>
+                <div class="flex gap-2 items-end">
+                    <div class="flex-1">
+                        <label class="block text-xs text-gray-500">가로 칸 수</label>
+                        <input type="number" id="gridCols" value="3" min="1" class="w-full mt-1 p-2 border rounded focus:ring-blue-500 focus:border-blue-500 text-sm">
+                    </div>
+                    <div class="flex-1">
+                        <label class="block text-xs text-gray-500">세로 칸 수</label>
+                        <input type="number" id="gridRows" value="2" min="1" class="w-full mt-1 p-2 border rounded focus:ring-blue-500 focus:border-blue-500 text-sm">
+                    </div>
+                    <button id="applyGridBtn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 text-sm font-medium py-2 px-3 rounded transition-colors" title="현재 화면 크기에 맞춰 배열">
+                        정렬
+                    </button>
+                </div>
+                <div class="flex gap-2">
+                    <button id="autoFitBtn" class="flex-1 bg-blue-50 hover:bg-blue-100 text-blue-600 border border-blue-200 text-sm font-medium py-2 px-2 rounded transition-colors" title="비율을 유지하며 칸에 맞춤">
+                        1:1 비율 맞춤
+                    </button>
+                    <button id="tightFitBtn" class="flex-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border border-indigo-200 text-sm font-medium py-2 px-2 rounded transition-colors" title="첫 번째 이미지 기준 여백 없이 꽉 채움">
+                        여백 제거 맞춤
+                    </button>
+                </div>
+                <p class="text-xs text-gray-400">비율이 찌그러지지 않도록 정렬됩니다.</p>
+            </div>
+
+            <!-- 합성 설정 -->
+            <div class="space-y-3">
+                <h3 class="text-sm font-medium text-gray-700 border-b pb-1">합성 설정</h3>
+                
+                <div>
+                    <label class="block text-xs text-gray-500">출력 프레임 (FPS)</label>
+                    <input type="number" id="outputFps" value="20" class="w-full mt-1 p-2 border rounded focus:ring-blue-500 focus:border-blue-500 text-sm">
+                    <p class="text-xs text-gray-400 mt-1">숫자가 높을수록 부드럽지만 용량이 커집니다.</p>
+                </div>
+
+                <div>
+                    <label class="block text-xs text-gray-500">총 재생 시간 (ms)</label>
+                    <input type="number" id="outputDuration" value="3000" class="w-full mt-1 p-2 border rounded focus:ring-blue-500 focus:border-blue-500 text-sm">
+                </div>
+                <!-- <div>
+                    <label class="block text-xs text-gray-500">배경색</label>
+                    <div class="flex items-center gap-2 mt-1">
+                        <input type="color" id="bgColor" value="#00FF00" class="w-8 h-8 rounded cursor-pointer border-0 p-0">
+                        <label class="flex items-center gap-1 text-sm">
+                            <input type="checkbox" id="isTransparent" checked class="rounded text-blue-500">
+                            투명하게 처리 (크로마키)
+                        </label>
+                    </div>
+                </div> -->
+            </div>
+
+            <div class="mt-auto pt-4">
+                <button id="generateBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-colors shadow-sm">
+                    GIF 생성하기
+                </button>
+            </div>
+        </div>
+
+        <!-- 오른쪽: 작업 영역 및 결과 -->
+        <div class="flex-1 p-6 flex flex-col bg-gray-50 min-h-[600px] overflow-hidden relative">
+            <div class="mb-4 flex justify-between items-end">
+                <h2 class="text-lg font-semibold text-gray-800">배치 영역</h2>
+                <p class="text-sm text-gray-500">이미지를 드래그하여 이동하거나 모서리를 잡아 크기를 조절하세요.</p>
+            </div>
+
+            <!-- 캔버스 컨테이너 (스크롤 가능) -->
+            <div class="flex-1 overflow-auto bg-gray-200 border border-gray-300 rounded-lg flex items-center justify-center p-4 relative">
+                <div id="workspace" class="workspace-grid relative bg-white shadow-md transition-all duration-200" style="width: 800px; height: 600px; overflow: hidden;">
+                    <!-- GIF 아이템들이 여기에 추가됩니다 -->
+                </div>
+            </div>
+
+            <!-- 결과물 출력 영역 -->
+            <div id="resultContainer" class="mt-6 hidden bg-white p-4 border border-gray-200 rounded-lg shadow-sm">
+                <h3 class="text-md font-medium text-gray-800 mb-3">생성 완료</h3>
+                <div class="flex flex-col items-center">
+                    <img id="resultImg" class="max-w-full h-auto border border-gray-200 rounded mb-4" />
+                    <a id="downloadBtn" class="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-6 rounded-lg transition-colors inline-block text-center cursor-pointer">
+                        결과물 다운로드
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 로직 스크립트 -->
+    <script type="module">
+        import { parseGIF, decompressFrames } from 'https://esm.sh/gifuct-js@2.1.2';
+
+        // --- 전역 상태 ---
+        let gifItems = [];
+        let workspaceParams = { width: 800, height: 600 };
+        let zIndexCounter = 10;
+        let gifWorkerUrl = '';
+        const animationStartTime = Date.now();
+
+        // 드래그 & 스냅을 위한 전역 상태
+        let activeDragItem = null;
+        let activeResizeItem = null;
+        let startX, startY, initialX, initialY, initialW, initialH;
+
+        // --- DOM 요소 ---
+        const workspace = document.getElementById('workspace');
+        const canvasWidthInput = document.getElementById('canvasWidth');
+        const canvasHeightInput = document.getElementById('canvasHeight');
+        const gridColsInput = document.getElementById('gridCols');
+        const gridRowsInput = document.getElementById('gridRows');
+        const applyGridBtn = document.getElementById('applyGridBtn');
+        const autoFitBtn = document.getElementById('autoFitBtn');
+        const tightFitBtn = document.getElementById('tightFitBtn');
+        const fileList = document.getElementById('fileList');
+        const fileInput = document.getElementById('fileInput');
+        const generateBtn = document.getElementById('generateBtn');
+        const outputDurationInput = document.getElementById('outputDuration');
+        const resultContainer = document.getElementById('resultContainer');
+        const resultImg = document.getElementById('resultImg');
+        const downloadBtn = document.getElementById('downloadBtn');
+
+        // --- 초기화 로직 ---
+        async function init() {
+            // Web Worker CORS 문제를 회피하기 위해 Worker 소스를 Blob으로 변환
+            try {
+                const res = await fetch('https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.worker.js');
+                const text = await res.text();
+                const blob = new Blob([text], {type: 'application/javascript'});
+                gifWorkerUrl = URL.createObjectURL(blob);
+            } catch (error) {
+                console.error("Worker 로드 실패", error);
+            }
+
+            // 이벤트 리스너 바인딩
+            canvasWidthInput.addEventListener('change', updateWorkspaceSize);
+            canvasHeightInput.addEventListener('change', updateWorkspaceSize);
+            applyGridBtn.addEventListener('click', applyGridArrangement);
+            autoFitBtn.addEventListener('click', autoFitCanvas);
+            tightFitBtn.addEventListener('click', tightFitCanvas);
+            fileInput.addEventListener('change', handleFileUpload);
+            generateBtn.addEventListener('click', generateGif);
+
+            // 전역 마우스 이벤트 (드래그 & 리사이즈 & 스냅 처리)
+            window.addEventListener('mousemove', handleGlobalMouseMove);
+            window.addEventListener('mouseup', () => {
+                activeDragItem = null;
+                activeResizeItem = null;
+            });
+
+            updateWorkspaceSize();
+            requestAnimationFrame(renderPreviewLoop);
+        }
+
+        // --- 작업 영역 업데이트 ---
+        function updateWorkspaceSize() {
+            workspaceParams.width = parseInt(canvasWidthInput.value) || 800;
+            workspaceParams.height = parseInt(canvasHeightInput.value) || 600;
+            workspace.style.width = `${workspaceParams.width}px`;
+            workspace.style.height = `${workspaceParams.height}px`;
+        }
+
+        // --- 추천 재생 시간 자동 설정 ---
+        function updateDurationSuggestion() {
+            if (gifItems.length === 0) return;
+            // 가장 긴 GIF의 재생 시간을 전체 재생 시간의 기본값으로 설정
+            const maxDuration = Math.max(...gifItems.map(item => item.totalDuration));
+            outputDurationInput.value = maxDuration;
+        }
+
+        // --- 파일 목록 UI 및 순서 정렬 ---
+        function updateFileListUI() {
+            fileList.innerHTML = '';
+            gifItems.forEach((item, index) => {
+                const li = document.createElement('li');
+                li.className = 'flex justify-between items-center text-xs p-1.5 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded';
+                
+                const nameSpan = document.createElement('span');
+                nameSpan.className = 'truncate w-32';
+                nameSpan.textContent = item.file.name;
+                nameSpan.title = item.file.name;
+
+                const btnGroup = document.createElement('div');
+                btnGroup.className = 'flex gap-1';
+
+                const upBtn = document.createElement('button');
+                upBtn.textContent = '▲';
+                upBtn.className = 'px-1.5 py-0.5 bg-gray-200 hover:bg-gray-300 rounded text-gray-600 disabled:opacity-30 disabled:hover:bg-gray-200';
+                upBtn.onclick = () => moveItem(index, -1);
+                if (index === 0) upBtn.disabled = true;
+
+                const downBtn = document.createElement('button');
+                downBtn.textContent = '▼';
+                downBtn.className = 'px-1.5 py-0.5 bg-gray-200 hover:bg-gray-300 rounded text-gray-600 disabled:opacity-30 disabled:hover:bg-gray-200';
+                downBtn.onclick = () => moveItem(index, 1);
+                if (index === gifItems.length - 1) downBtn.disabled = true;
+
+                btnGroup.appendChild(upBtn);
+                btnGroup.appendChild(downBtn);
+
+                li.appendChild(nameSpan);
+                li.appendChild(btnGroup);
+                fileList.appendChild(li);
+            });
+        }
+
+        function moveItem(index, direction) {
+            const newIndex = index + direction;
+            if (newIndex < 0 || newIndex >= gifItems.length) return;
+            
+            // 배열 내 순서 변경
+            const temp = gifItems[index];
+            gifItems[index] = gifItems[newIndex];
+            gifItems[newIndex] = temp;
+            
+            updateFileListUI();
+            
+            // z-index 재정렬 (순서가 뒤일수록 위에 그려짐)
+            gifItems.forEach((item, idx) => {
+                item.zIndex = zIndexCounter + idx;
+                if (item.uiElement) item.uiElement.style.zIndex = item.zIndex;
+            });
+            zIndexCounter += gifItems.length;
+        }
+
+        // --- 1:1 비율 자동 맞춤 로직 ---
+        function autoFitCanvas() {
+            const cols = parseInt(gridColsInput.value) || 1;
+            const rows = parseInt(gridRowsInput.value) || 1;
+            const baseSize = 250; // 기준 셀 크기 (px)
+            
+            canvasWidthInput.value = cols * baseSize;
+            canvasHeightInput.value = rows * baseSize;
+            
+            updateWorkspaceSize();
+            applyGridArrangement();
+        }
+
+        // --- 여백 없이 꽉 채우기 (Tight Fit) ---
+        function tightFitCanvas() {
+            if (gifItems.length === 0) return;
+            const cols = parseInt(gridColsInput.value) || 1;
+            const rows = parseInt(gridRowsInput.value) || 1;
+
+            // 첫 번째 업로드된 이미지의 원본 크기를 기준으로 삼음
+            const baseW = gifItems[0].originalWidth;
+            const baseH = gifItems[0].originalHeight;
+
+            canvasWidthInput.value = cols * baseW;
+            canvasHeightInput.value = rows * baseH;
+            
+            updateWorkspaceSize();
+
+            gifItems.forEach((item, index) => {
+                const colIndex = index % cols;
+                const rowIndex = Math.floor(index / cols);
+
+                // 기준 크기에 강제로 맞춰서 여백 제거
+                item.width = baseW;
+                item.height = baseH;
+                item.x = colIndex * baseW;
+                item.y = rowIndex * baseH;
+
+                if (item.uiElement) {
+                    item.uiElement.style.left = `${item.x}px`;
+                    item.uiElement.style.top = `${item.y}px`;
+                    item.uiElement.style.width = `${item.width}px`;
+                    item.uiElement.style.height = `${item.height}px`;
+                }
+            });
+        }
+
+        // --- 그리드 자동 정렬 로직 ---
+        function applyGridArrangement() {
+            if (gifItems.length === 0) return;
+
+            const cols = parseInt(gridColsInput.value) || 1;
+            const rows = parseInt(gridRowsInput.value) || 1;
+            
+            const cellWidth = workspaceParams.width / cols;
+            const cellHeight = workspaceParams.height / rows;
+
+            gifItems.forEach((item, index) => {
+                const colIndex = index % cols;
+                const rowIndex = Math.floor(index / cols);
+
+                // 원본 비율을 깨지 않고(Contain) 칸 안의 중앙에 배치
+                const scaleX = cellWidth / item.originalWidth;
+                const scaleY = cellHeight / item.originalHeight;
+                const scale = Math.min(scaleX, scaleY);
+
+                item.width = Math.round(item.originalWidth * scale);
+                item.height = Math.round(item.originalHeight * scale);
+
+                // 셀 내에서 중앙 정렬
+                item.x = Math.round((colIndex * cellWidth) + (cellWidth - item.width) / 2);
+                item.y = Math.round((rowIndex * cellHeight) + (cellHeight - item.height) / 2);
+
+                if (item.uiElement) {
+                    item.uiElement.style.left = `${item.x}px`;
+                    item.uiElement.style.top = `${item.y}px`;
+                    item.uiElement.style.width = `${item.width}px`;
+                    item.uiElement.style.height = `${item.height}px`;
+                }
+            });
+        }
+
+        // --- 파일 업로드 처리 ---
+        async function handleFileUpload(e) {
+            const files = e.target.files;
+            if (!files.length) return;
+
+            for (let file of files) {
+                try {
+                    await processGifFile(file);
+                } catch (err) {
+                    console.error("GIF 처리 오류:", err);
+                    alert("파일을 처리하는 중 오류가 발생했습니다: " + file.name);
+                }
+            }
+            fileInput.value = ''; // 초기화
+        }
+
+        // --- GIF 파일 파싱 및 프레임 렌더링 ---
+        async function processGifFile(file) {
+            const buffer = await file.arrayBuffer();
+            const gif = parseGIF(buffer);
+            const frames = decompressFrames(gif, true);
+
+            const width = gif.lsd.width;
+            const height = gif.lsd.height;
+
+            // 각 프레임을 독립된 Canvas 이미지로 합성 (Disposal Method 처리)
+            const renderedFrames = renderGifFrames(frames, width, height);
+            const totalDuration = renderedFrames.reduce((acc, f) => acc + f.delay, 0);
+
+            const item = {
+                id: 'gif_' + Date.now() + Math.floor(Math.random() * 1000),
+                file: file,
+                originalWidth: width,
+                originalHeight: height,
+                width: width,
+                height: height,
+                x: (workspaceParams.width - width) / 2, // 중앙 배치
+                y: (workspaceParams.height - height) / 2,
+                zIndex: zIndexCounter++,
+                frames: renderedFrames,
+                totalDuration: totalDuration,
+                previewCanvas: null,
+                uiElement: null
+            };
+
+            gifItems.push(item);
+            createItemUi(item);
+            updateDurationSuggestion();
+            updateFileListUI();
+        }
+
+        // 프레임 합성 로직 (최적화된 GIF의 이전 프레임 잔상/삭제 규격 처리)
+        function renderGifFrames(frames, width, height) {
+            const renderedFrames = [];
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+            const backupCanvas = document.createElement('canvas');
+            backupCanvas.width = width;
+            backupCanvas.height = height;
+            const backupCtx = backupCanvas.getContext('2d', { willReadFrequently: true });
+
+            for (let i = 0; i < frames.length; i++) {
+                const frame = frames[i];
+                const dims = frame.dims;
+
+                if (i > 0) {
+                    const prevFrame = frames[i-1];
+                    const disposal = prevFrame.disposalType;
+                    if (disposal === 2) {
+                        // 배경색으로 지우기
+                        ctx.clearRect(prevFrame.dims.left, prevFrame.dims.top, prevFrame.dims.width, prevFrame.dims.height);
+                    } else if (disposal === 3) {
+                        // 이전 상태로 복구
+                        ctx.clearRect(0, 0, width, height);
+                        ctx.drawImage(backupCanvas, 0, 0);
+                    }
+                }
+
+                // 현재 상태 백업 (다음 프레임이 복구를 요구할 경우 대비)
+                if (frame.disposalType === 3) {
+                    backupCtx.clearRect(0, 0, width, height);
+                    backupCtx.drawImage(canvas, 0, 0);
+                }
+
+                // 현재 프레임 패치 그리기
+                const patchCanvas = document.createElement('canvas');
+                patchCanvas.width = dims.width;
+                patchCanvas.height = dims.height;
+                const patchCtx = patchCanvas.getContext('2d');
+                
+                // ImageData 생성
+                const imageData = new ImageData(
+                    new Uint8ClampedArray(frame.patch),
+                    dims.width,
+                    dims.height
+                );
+                patchCtx.putImageData(imageData, 0, 0);
+                ctx.drawImage(patchCanvas, dims.left, dims.top);
+
+                // 현재 합성된 상태를 저장
+                const savedCanvas = document.createElement('canvas');
+                savedCanvas.width = width;
+                savedCanvas.height = height;
+                savedCanvas.getContext('2d').drawImage(canvas, 0, 0);
+
+                renderedFrames.push({
+                    canvas: savedCanvas,
+                    delay: Math.max(20, frame.delay || 100) // 최소 지연 시간 보장
+                });
+            }
+            return renderedFrames;
+        }
+
+        // --- UI 요소 생성 및 마우스 이벤트 설정 ---
+        function createItemUi(item) {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'gif-item absolute border-2 border-transparent hover:border-blue-400 group cursor-move';
+            wrapper.style.left = `${item.x}px`;
+            wrapper.style.top = `${item.y}px`;
+            wrapper.style.width = `${item.width}px`;
+            wrapper.style.height = `${item.height}px`;
+            wrapper.style.zIndex = item.zIndex;
+
+            // 삭제 버튼
+            const deleteBtn = document.createElement('button');
+            deleteBtn.innerHTML = '×';
+            deleteBtn.className = 'absolute top-0 right-0 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm transform translate-x-1/2 -translate-y-1/2 hidden group-hover:flex z-20 shadow-sm cursor-pointer';
+            deleteBtn.onmousedown = (e) => e.stopPropagation(); // 드래그 방지
+            deleteBtn.onclick = () => {
+                gifItems = gifItems.filter(i => i.id !== item.id);
+                wrapper.remove();
+                updateDurationSuggestion();
+                updateFileListUI();
+            };
+
+            // 리사이즈 핸들
+            const resizeHandle = document.createElement('div');
+            resizeHandle.className = 'resize-handle hidden group-hover:block';
+
+            // 프리뷰 캔버스
+            const previewCanvas = document.createElement('canvas');
+            previewCanvas.width = item.originalWidth;
+            previewCanvas.height = item.originalHeight;
+            previewCanvas.style.width = '100%';
+            previewCanvas.style.height = '100%';
+            previewCanvas.style.pointerEvents = 'none'; // 이벤트는 wrapper가 받음
+
+            wrapper.appendChild(previewCanvas);
+            wrapper.appendChild(deleteBtn);
+            wrapper.appendChild(resizeHandle);
+            workspace.appendChild(wrapper);
+
+            item.previewCanvas = previewCanvas;
+            item.uiElement = wrapper;
+
+            // 드래그 준비
+            wrapper.addEventListener('mousedown', (e) => {
+                if (e.target === resizeHandle || e.target === deleteBtn) return;
+                activeDragItem = item;
+                startX = e.clientX;
+                startY = e.clientY;
+                initialX = item.x;
+                initialY = item.y;
+                
+                // 클릭 시 최상단으로 이동
+                item.zIndex = ++zIndexCounter;
+                wrapper.style.zIndex = item.zIndex;
+            });
+
+            // 리사이즈 준비
+            resizeHandle.addEventListener('mousedown', (e) => {
+                e.stopPropagation();
+                activeResizeItem = item;
+                startX = e.clientX;
+                startY = e.clientY;
+                initialW = item.width;
+                initialH = item.height;
+            });
+        }
+
+        // --- 전역 드래그 & 스냅 핸들러 ---
+        function handleGlobalMouseMove(e) {
+            const SNAP_DIST = 15; // 스냅(자석) 적용 거리 (px)
+
+            if (activeDragItem) {
+                const item = activeDragItem;
+                const dx = e.clientX - startX;
+                const dy = e.clientY - startY;
+                let newX = initialX + dx;
+                let newY = initialY + dy;
+                
+                let snappedX = false;
+                let snappedY = false;
+
+                // 1. 캔버스 가장자리 스냅
+                if (Math.abs(newX) < SNAP_DIST) { newX = 0; snappedX = true; }
+                else if (Math.abs(newX + item.width - workspaceParams.width) < SNAP_DIST) { newX = workspaceParams.width - item.width; snappedX = true; }
+
+                if (Math.abs(newY) < SNAP_DIST) { newY = 0; snappedY = true; }
+                else if (Math.abs(newY + item.height - workspaceParams.height) < SNAP_DIST) { newY = workspaceParams.height - item.height; snappedY = true; }
+
+                // 2. 다른 아이템 스냅
+                gifItems.forEach(other => {
+                    if (other.id === item.id) return;
+                    
+                    // X축 (좌우) 스냅
+                    const targetsX = [other.x, other.x + other.width];
+                    const myEdgesX = [newX, newX + item.width];
+                    if (!snappedX) {
+                        for (let mx of myEdgesX) {
+                            for (let tx of targetsX) {
+                                if (Math.abs(mx - tx) < SNAP_DIST) {
+                                    newX += (tx - mx);
+                                    snappedX = true; break;
+                                }
+                            }
+                            if (snappedX) break;
+                        }
+                    }
+
+                    // Y축 (상하) 스냅
+                    const targetsY = [other.y, other.y + other.height];
+                    const myEdgesY = [newY, newY + item.height];
+                    if (!snappedY) {
+                        for (let my of myEdgesY) {
+                            for (let ty of targetsY) {
+                                if (Math.abs(my - ty) < SNAP_DIST) {
+                                    newY += (ty - my);
+                                    snappedY = true; break;
+                                }
+                            }
+                            if (snappedY) break;
+                        }
+                    }
+                });
+
+                item.x = newX;
+                item.y = newY;
+                item.uiElement.style.left = `${item.x}px`;
+                item.uiElement.style.top = `${item.y}px`;
+            }
+
+            if (activeResizeItem) {
+                const item = activeResizeItem;
+                const dx = e.clientX - startX;
+                const dy = e.clientY - startY;
+                let newW = initialW + dx;
+                let newH = initialH + dy;
+                
+                let snappedW = false;
+                let snappedH = false;
+
+                // 1. 캔버스 가장자리 스냅 (크기 조절 시)
+                if (Math.abs(item.x + newW - workspaceParams.width) < SNAP_DIST) {
+                    newW = workspaceParams.width - item.x; snappedW = true;
+                }
+                if (Math.abs(item.y + newH - workspaceParams.height) < SNAP_DIST) {
+                    newH = workspaceParams.height - item.y; snappedH = true;
+                }
+
+                // 2. 다른 아이템 스냅 (크기 조절 시)
+                gifItems.forEach(other => {
+                    if (other.id === item.id) return;
+                    
+                    const targetsX = [other.x, other.x + other.width];
+                    if (!snappedW) {
+                        for (let tx of targetsX) {
+                            if (Math.abs(item.x + newW - tx) < SNAP_DIST) {
+                                newW = tx - item.x; snappedW = true; break;
+                            }
+                        }
+                    }
+
+                    const targetsY = [other.y, other.y + other.height];
+                    if (!snappedH) {
+                        for (let ty of targetsY) {
+                            if (Math.abs(item.y + newH - ty) < SNAP_DIST) {
+                                newH = ty - item.y; snappedH = true; break;
+                            }
+                        }
+                    }
+                });
+
+                item.width = Math.max(20, newW);
+                item.height = Math.max(20, newH);
+                item.uiElement.style.width = `${item.width}px`;
+                item.uiElement.style.height = `${item.height}px`;
+            }
+        }
+
+        // --- 프리뷰 애니메이션 루프 ---
+        // 여러 GIF의 각기 다른 프레임을 글로벌 시간에 맞춰 재생 (자연스러운 동기화)
+        function renderPreviewLoop() {
+            const now = Date.now();
+            const elapsed = now - animationStartTime;
+
+            gifItems.forEach(item => {
+                if (!item.previewCanvas) return;
+                const ctx = item.previewCanvas.getContext('2d');
+                
+                // 현재 시간에 해당하는 프레임 찾기
+                const tLocal = elapsed % item.totalDuration;
+                let currentT = 0;
+                let currentFrame = item.frames[0];
+
+                for (let i = 0; i < item.frames.length; i++) {
+                    currentT += item.frames[i].delay;
+                    if (tLocal < currentT) {
+                        currentFrame = item.frames[i];
+                        break;
+                    }
+                }
+
+                ctx.clearRect(0, 0, item.originalWidth, item.originalHeight);
+                ctx.drawImage(currentFrame.canvas, 0, 0);
+            });
+
+            requestAnimationFrame(renderPreviewLoop);
+        }
+
+        // --- 최종 GIF 합성 ---
+        async function generateGif() {
+            if (gifItems.length === 0) {
+                alert('합성할 GIF 파일이 없습니다.');
+                return;
+            }
+
+            generateBtn.disabled = true;
+            generateBtn.innerText = '합성 준비 중...';
+            resultContainer.classList.add('hidden');
+
+            const fps = parseInt(document.getElementById('outputFps').value) || 20;
+            const delayMs = Math.floor(1000 / fps);
+            const totalDuration = parseInt(outputDurationInput.value) || 3000;
+            
+            const bgColor = document.getElementById('bgColor').value;
+            // const isTransparent = document.getElementById('isTransparent').checked;
+
+            const gifOptions = {
+                workers: 2,
+                quality: 10,
+                width: workspaceParams.width,
+                height: workspaceParams.height,
+                workerScript: gifWorkerUrl || undefined
+            };
+
+            // if (isTransparent) {
+            //     // gif.js는 16진수 색상 코드를 투명 색상으로 인식합니다.
+            //     gifOptions.transparent = bgColor; 
+            // }
+
+            const gif = new GIF(gifOptions);
+
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = workspaceParams.width;
+            tempCanvas.height = workspaceParams.height;
+            const tempCtx = tempCanvas.getContext('2d', { willReadFrequently: true });
+
+            // 글로벌 시간축(t)을 기준으로 프레임 스텝 진행
+            for (let t = 0; t < totalDuration; t += delayMs) {
+                // 배경 채우기
+                tempCtx.fillStyle = bgColor;
+                tempCtx.fillRect(0, 0, workspaceParams.width, workspaceParams.height);
+
+                // z-index 순으로 정렬하여 렌더링
+                const sortedItems = [...gifItems].sort((a, b) => a.zIndex - b.zIndex);
+
+                sortedItems.forEach(item => {
+                    const tLocal = t % item.totalDuration;
+                    let currentT = 0;
+                    let currentFrame = item.frames[0];
+
+                    for (let i = 0; i < item.frames.length; i++) {
+                        currentT += item.frames[i].delay;
+                        if (tLocal < currentT) {
+                            currentFrame = item.frames[i];
+                            break;
+                        }
+                    }
+
+                    // 스케일링이 적용된 상태로 메인 캔버스에 그리기
+                    tempCtx.drawImage(
+                        currentFrame.canvas,
+                        0, 0, item.originalWidth, item.originalHeight,
+                        item.x, item.y, item.width, item.height
+                    );
+                });
+
+                gif.addFrame(tempCtx, { copy: true, delay: delayMs });
+            }
+
+            // 이벤트 리스너
+            gif.on('progress', function(p) {
+                generateBtn.innerText = `합성 중... ${Math.round(p * 100)}%`;
+            });
+
+            gif.on('finished', function(blob) {
+                const url = URL.createObjectURL(blob);
+                resultImg.src = url;
+                downloadBtn.href = url;
+                downloadBtn.download = 'combined.gif';
+                
+                resultContainer.classList.remove('hidden');
+                generateBtn.disabled = false;
+                generateBtn.innerText = 'GIF 생성하기';
+
+                // 결과 영역으로 스크롤
+                resultContainer.scrollIntoView({ behavior: 'smooth' });
+            });
+
+            // 렌더링 시작
+            setTimeout(() => {
+                gif.render();
+            }, 50);
+        }
+
+        // 실행
+        document.addEventListener('DOMContentLoaded', init);
+
+    </script>
+</body>
+</html>
