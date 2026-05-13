@@ -32,7 +32,7 @@
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800 min-h-screen p-6 font-sans">
-    <div class="max-w-6xl mx-auto bg-white rounded-xl shadow-lg overflow-hidden flex flex-col md:flex-row">
+    <div class="max-w-7xl mx-auto bg-white rounded-xl shadow-lg overflow-hidden flex flex-col md:flex-row">
         
         <!-- 왼쪽: 설정 패널 -->
         <div class="w-full md:w-80 bg-gray-100 p-6 flex flex-col gap-6 border-r border-gray-200 overflow-y-auto">
@@ -54,11 +54,11 @@
                 </div>
             </div>
 
-            <!-- 업로드된 파일 목록 (순서 정렬) -->
+            <!-- 업로드된 파일 목록 (순서 정렬 및 삭제) -->
             <div class="space-y-2">
                 <div class="flex justify-between items-end">
                     <label class="block text-sm font-medium text-gray-700">파일 목록</label>
-                    <span class="text-xs text-gray-400">위아래 정렬 가능</span>
+                    <span class="text-xs text-gray-400">순서 변경 및 삭제</span>
                 </div>
                 <ul id="fileList" class="space-y-1 max-h-32 overflow-y-auto border border-gray-200 rounded p-2 bg-white empty:hidden">
                     <!-- 스크립트로 추가됨 -->
@@ -98,10 +98,10 @@
                 </div>
                 <div class="flex gap-2">
                     <button id="autoFitBtn" class="flex-1 bg-blue-50 hover:bg-blue-100 text-blue-600 border border-blue-200 text-sm font-medium py-2 px-2 rounded transition-colors" title="비율을 유지하며 칸에 맞춤">
-                        1:1 비율 맞춤
+                        1:1 비율
                     </button>
                     <button id="tightFitBtn" class="flex-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border border-indigo-200 text-sm font-medium py-2 px-2 rounded transition-colors" title="첫 번째 이미지 기준 여백 없이 꽉 채움">
-                        여백 제거 맞춤
+                        여백 제거
                     </button>
                 </div>
                 <p class="text-xs text-gray-400">비율이 찌그러지지 않도록 정렬됩니다.</p>
@@ -111,26 +111,33 @@
             <div class="space-y-3">
                 <h3 class="text-sm font-medium text-gray-700 border-b pb-1">합성 설정</h3>
                 
-                <div>
-                    <label class="block text-xs text-gray-500">출력 프레임 (FPS)</label>
-                    <input type="number" id="outputFps" value="20" class="w-full mt-1 p-2 border rounded focus:ring-blue-500 focus:border-blue-500 text-sm">
-                    <p class="text-xs text-gray-400 mt-1">숫자가 높을수록 부드럽지만 용량이 커집니다.</p>
+                <div class="flex gap-2">
+                    <div class="flex-1">
+                        <label class="block text-xs text-gray-500">출력 배율 (%)</label>
+                        <input type="number" id="outputScale" value="100" min="10" max="200" class="w-full mt-1 p-2 border rounded focus:ring-blue-500 focus:border-blue-500 text-sm">
+                    </div>
+                    <div class="flex-1">
+                        <label class="block text-xs text-gray-500">출력 프레임</label>
+                        <input type="number" id="outputFps" value="20" class="w-full mt-1 p-2 border rounded focus:ring-blue-500 focus:border-blue-500 text-sm">
+                    </div>
                 </div>
+                <p class="text-xs text-gray-400 mt-1">배율을 줄이면 용량 최적화에 도움이 됩니다.</p>
 
                 <div>
                     <label class="block text-xs text-gray-500">총 재생 시간 (ms)</label>
                     <input type="number" id="outputDuration" value="3000" class="w-full mt-1 p-2 border rounded focus:ring-blue-500 focus:border-blue-500 text-sm">
                 </div>
-                <!-- <div>
+
+                <div>
                     <label class="block text-xs text-gray-500">배경색</label>
                     <div class="flex items-center gap-2 mt-1">
                         <input type="color" id="bgColor" value="#00FF00" class="w-8 h-8 rounded cursor-pointer border-0 p-0">
-                        <label class="flex items-center gap-1 text-sm">
+                        <!-- <label class="flex items-center gap-1 text-sm">
                             <input type="checkbox" id="isTransparent" checked class="rounded text-blue-500">
                             투명하게 처리 (크로마키)
-                        </label>
+                        </label> -->
                     </div>
-                </div> -->
+                </div>
             </div>
 
             <div class="mt-auto pt-4">
@@ -143,14 +150,27 @@
         <!-- 오른쪽: 작업 영역 및 결과 -->
         <div class="flex-1 p-6 flex flex-col bg-gray-50 min-h-[600px] overflow-hidden relative">
             <div class="mb-4 flex justify-between items-end">
-                <h2 class="text-lg font-semibold text-gray-800">배치 영역</h2>
-                <p class="text-sm text-gray-500">이미지를 드래그하여 이동하거나 모서리를 잡아 크기를 조절하세요.</p>
+                <div>
+                    <h2 class="text-lg font-semibold text-gray-800">배치 영역</h2>
+                    <p class="text-sm text-gray-500">드래그 및 크기 조절이 가능합니다.</p>
+                </div>
+                <!-- 확대/축소 컨트롤 -->
+                <div class="flex items-center gap-2 bg-white border border-gray-300 rounded px-2 py-1 shadow-sm">
+                    <button id="zoomOutBtn" class="px-2 text-gray-600 hover:text-blue-600 font-bold" title="축소">-</button>
+                    <span id="zoomLabel" class="text-xs font-medium w-10 text-center">100%</span>
+                    <button id="zoomInBtn" class="px-2 text-gray-600 hover:text-blue-600 font-bold" title="확대">+</button>
+                    <div class="w-px h-4 bg-gray-300 mx-1"></div>
+                    <button id="zoomFitBtn" class="px-2 text-xs text-gray-600 hover:text-blue-600" title="화면에 맞추기">맞춤</button>
+                </div>
             </div>
 
             <!-- 캔버스 컨테이너 (스크롤 가능) -->
-            <div class="flex-1 overflow-auto bg-gray-200 border border-gray-300 rounded-lg flex items-center justify-center p-4 relative">
-                <div id="workspace" class="workspace-grid relative bg-white shadow-md transition-all duration-200" style="width: 800px; height: 600px; overflow: hidden;">
-                    <!-- GIF 아이템들이 여기에 추가됩니다 -->
+            <div id="workspaceContainer" class="flex-1 overflow-auto bg-gray-200 border border-gray-300 rounded-lg p-4 relative">
+                <!-- 스크롤 영역을 만들어주는 래퍼 -->
+                <div id="workspaceWrapper" class="relative transition-all duration-200 flex items-center justify-center min-w-full min-h-full">
+                    <div id="workspace" class="workspace-grid relative bg-white shadow-md" style="width: 800px; height: 600px; overflow: hidden; transform-origin: center center;">
+                        <!-- GIF 아이템들이 여기에 추가됩니다 -->
+                    </div>
                 </div>
             </div>
 
@@ -176,6 +196,7 @@
         let workspaceParams = { width: 800, height: 600 };
         let zIndexCounter = 10;
         let gifWorkerUrl = '';
+        let workspaceZoom = 1.0;
         const animationStartTime = Date.now();
 
         // 드래그 & 스냅을 위한 전역 상태
@@ -185,6 +206,8 @@
 
         // --- DOM 요소 ---
         const workspace = document.getElementById('workspace');
+        const workspaceWrapper = document.getElementById('workspaceWrapper');
+        const workspaceContainer = document.getElementById('workspaceContainer');
         const canvasWidthInput = document.getElementById('canvasWidth');
         const canvasHeightInput = document.getElementById('canvasHeight');
         const gridColsInput = document.getElementById('gridCols');
@@ -196,9 +219,16 @@
         const fileInput = document.getElementById('fileInput');
         const generateBtn = document.getElementById('generateBtn');
         const outputDurationInput = document.getElementById('outputDuration');
+        const outputScaleInput = document.getElementById('outputScale');
         const resultContainer = document.getElementById('resultContainer');
         const resultImg = document.getElementById('resultImg');
         const downloadBtn = document.getElementById('downloadBtn');
+
+        // 줌 관련 DOM
+        const zoomOutBtn = document.getElementById('zoomOutBtn');
+        const zoomInBtn = document.getElementById('zoomInBtn');
+        const zoomFitBtn = document.getElementById('zoomFitBtn');
+        const zoomLabel = document.getElementById('zoomLabel');
 
         // --- 초기화 로직 ---
         async function init() {
@@ -221,6 +251,11 @@
             fileInput.addEventListener('change', handleFileUpload);
             generateBtn.addEventListener('click', generateGif);
 
+            // 줌 이벤트
+            zoomOutBtn.addEventListener('click', () => setZoom(workspaceZoom - 0.1));
+            zoomInBtn.addEventListener('click', () => setZoom(workspaceZoom + 0.1));
+            zoomFitBtn.addEventListener('click', fitZoomToContainer);
+
             // 전역 마우스 이벤트 (드래그 & 리사이즈 & 스냅 처리)
             window.addEventListener('mousemove', handleGlobalMouseMove);
             window.addEventListener('mouseup', () => {
@@ -229,6 +264,7 @@
             });
 
             updateWorkspaceSize();
+            fitZoomToContainer(); // 초기화 시 화면에 맞게 줌 조절
             requestAnimationFrame(renderPreviewLoop);
         }
 
@@ -238,17 +274,40 @@
             workspaceParams.height = parseInt(canvasHeightInput.value) || 600;
             workspace.style.width = `${workspaceParams.width}px`;
             workspace.style.height = `${workspaceParams.height}px`;
+            updateZoomWrapper();
+        }
+
+        function setZoom(level) {
+            workspaceZoom = Math.max(0.1, Math.min(3.0, level));
+            zoomLabel.innerText = Math.round(workspaceZoom * 100) + '%';
+            workspace.style.transform = `scale(${workspaceZoom})`;
+            updateZoomWrapper();
+        }
+
+        function updateZoomWrapper() {
+            // 확대/축소 시 래퍼의 크기도 키워주어 스크롤바가 정상적으로 나타나도록 함
+            workspaceWrapper.style.width = `${workspaceParams.width * workspaceZoom}px`;
+            workspaceWrapper.style.height = `${workspaceParams.height * workspaceZoom}px`;
+        }
+
+        function fitZoomToContainer() {
+            // 패딩 고려하여 컨테이너 크기 내에 딱 맞게 배율 계산
+            const padding = 32;
+            const availableW = workspaceContainer.clientWidth - padding;
+            const availableH = workspaceContainer.clientHeight - padding;
+            const scaleX = availableW / workspaceParams.width;
+            const scaleY = availableH / workspaceParams.height;
+            setZoom(Math.min(scaleX, scaleY, 1.0)); // 100% 이상은 자동으로 안 커지게 제한
         }
 
         // --- 추천 재생 시간 자동 설정 ---
         function updateDurationSuggestion() {
             if (gifItems.length === 0) return;
-            // 가장 긴 GIF의 재생 시간을 전체 재생 시간의 기본값으로 설정
             const maxDuration = Math.max(...gifItems.map(item => item.totalDuration));
             outputDurationInput.value = maxDuration;
         }
 
-        // --- 파일 목록 UI 및 순서 정렬 ---
+        // --- 파일 목록 UI 및 순서 정렬/삭제 ---
         function updateFileListUI() {
             fileList.innerHTML = '';
             gifItems.forEach((item, index) => {
@@ -261,22 +320,35 @@
                 nameSpan.title = item.file.name;
 
                 const btnGroup = document.createElement('div');
-                btnGroup.className = 'flex gap-1';
+                btnGroup.className = 'flex gap-1 items-center';
 
                 const upBtn = document.createElement('button');
                 upBtn.textContent = '▲';
-                upBtn.className = 'px-1.5 py-0.5 bg-gray-200 hover:bg-gray-300 rounded text-gray-600 disabled:opacity-30 disabled:hover:bg-gray-200';
+                upBtn.className = 'px-1.5 py-0.5 bg-gray-200 hover:bg-gray-300 rounded text-gray-600 disabled:opacity-30 disabled:hover:bg-gray-200 cursor-pointer';
                 upBtn.onclick = () => moveItem(index, -1);
                 if (index === 0) upBtn.disabled = true;
 
                 const downBtn = document.createElement('button');
                 downBtn.textContent = '▼';
-                downBtn.className = 'px-1.5 py-0.5 bg-gray-200 hover:bg-gray-300 rounded text-gray-600 disabled:opacity-30 disabled:hover:bg-gray-200';
+                downBtn.className = 'px-1.5 py-0.5 bg-gray-200 hover:bg-gray-300 rounded text-gray-600 disabled:opacity-30 disabled:hover:bg-gray-200 cursor-pointer';
                 downBtn.onclick = () => moveItem(index, 1);
                 if (index === gifItems.length - 1) downBtn.disabled = true;
 
+                // 개별 삭제 버튼
+                const delBtn = document.createElement('button');
+                delBtn.textContent = '✕';
+                delBtn.className = 'ml-1 px-1.5 py-0.5 bg-red-100 hover:bg-red-200 rounded text-red-600 cursor-pointer font-bold';
+                delBtn.title = "삭제";
+                delBtn.onclick = () => {
+                    gifItems = gifItems.filter(i => i.id !== item.id);
+                    if (item.uiElement) item.uiElement.remove();
+                    updateDurationSuggestion();
+                    updateFileListUI();
+                };
+
                 btnGroup.appendChild(upBtn);
                 btnGroup.appendChild(downBtn);
+                btnGroup.appendChild(delBtn);
 
                 li.appendChild(nameSpan);
                 li.appendChild(btnGroup);
@@ -313,6 +385,7 @@
             canvasHeightInput.value = rows * baseSize;
             
             updateWorkspaceSize();
+            fitZoomToContainer();
             applyGridArrangement();
         }
 
@@ -330,6 +403,7 @@
             canvasHeightInput.value = rows * baseH;
             
             updateWorkspaceSize();
+            fitZoomToContainer();
 
             gifItems.forEach((item, index) => {
                 const colIndex = index % cols;
@@ -436,7 +510,6 @@
             updateFileListUI();
         }
 
-        // 프레임 합성 로직 (최적화된 GIF의 이전 프레임 잔상/삭제 규격 처리)
         function renderGifFrames(frames, width, height) {
             const renderedFrames = [];
             const canvas = document.createElement('canvas');
@@ -457,28 +530,23 @@
                     const prevFrame = frames[i-1];
                     const disposal = prevFrame.disposalType;
                     if (disposal === 2) {
-                        // 배경색으로 지우기
                         ctx.clearRect(prevFrame.dims.left, prevFrame.dims.top, prevFrame.dims.width, prevFrame.dims.height);
                     } else if (disposal === 3) {
-                        // 이전 상태로 복구
                         ctx.clearRect(0, 0, width, height);
                         ctx.drawImage(backupCanvas, 0, 0);
                     }
                 }
 
-                // 현재 상태 백업 (다음 프레임이 복구를 요구할 경우 대비)
                 if (frame.disposalType === 3) {
                     backupCtx.clearRect(0, 0, width, height);
                     backupCtx.drawImage(canvas, 0, 0);
                 }
 
-                // 현재 프레임 패치 그리기
                 const patchCanvas = document.createElement('canvas');
                 patchCanvas.width = dims.width;
                 patchCanvas.height = dims.height;
                 const patchCtx = patchCanvas.getContext('2d');
                 
-                // ImageData 생성
                 const imageData = new ImageData(
                     new Uint8ClampedArray(frame.patch),
                     dims.width,
@@ -487,7 +555,6 @@
                 patchCtx.putImageData(imageData, 0, 0);
                 ctx.drawImage(patchCanvas, dims.left, dims.top);
 
-                // 현재 합성된 상태를 저장
                 const savedCanvas = document.createElement('canvas');
                 savedCanvas.width = width;
                 savedCanvas.height = height;
@@ -495,7 +562,7 @@
 
                 renderedFrames.push({
                     canvas: savedCanvas,
-                    delay: Math.max(20, frame.delay || 100) // 최소 지연 시간 보장
+                    delay: Math.max(20, frame.delay || 100) 
                 });
             }
             return renderedFrames;
@@ -511,7 +578,7 @@
             wrapper.style.height = `${item.height}px`;
             wrapper.style.zIndex = item.zIndex;
 
-            // 삭제 버튼
+            // 삭제 버튼 (캔버스 내)
             const deleteBtn = document.createElement('button');
             deleteBtn.innerHTML = '×';
             deleteBtn.className = 'absolute top-0 right-0 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm transform translate-x-1/2 -translate-y-1/2 hidden group-hover:flex z-20 shadow-sm cursor-pointer';
@@ -572,10 +639,11 @@
         function handleGlobalMouseMove(e) {
             const SNAP_DIST = 15; // 스냅(자석) 적용 거리 (px)
 
+            // workspaceZoom으로 마우스 이동 거리를 나누어 주어 확대/축소 시에도 정확하게 이동하도록 보정
             if (activeDragItem) {
                 const item = activeDragItem;
-                const dx = e.clientX - startX;
-                const dy = e.clientY - startY;
+                const dx = (e.clientX - startX) / workspaceZoom;
+                const dy = (e.clientY - startY) / workspaceZoom;
                 let newX = initialX + dx;
                 let newY = initialY + dy;
                 
@@ -593,7 +661,6 @@
                 gifItems.forEach(other => {
                     if (other.id === item.id) return;
                     
-                    // X축 (좌우) 스냅
                     const targetsX = [other.x, other.x + other.width];
                     const myEdgesX = [newX, newX + item.width];
                     if (!snappedX) {
@@ -608,7 +675,6 @@
                         }
                     }
 
-                    // Y축 (상하) 스냅
                     const targetsY = [other.y, other.y + other.height];
                     const myEdgesY = [newY, newY + item.height];
                     if (!snappedY) {
@@ -632,8 +698,8 @@
 
             if (activeResizeItem) {
                 const item = activeResizeItem;
-                const dx = e.clientX - startX;
-                const dy = e.clientY - startY;
+                const dx = (e.clientX - startX) / workspaceZoom;
+                const dy = (e.clientY - startY) / workspaceZoom;
                 let newW = initialW + dx;
                 let newH = initialH + dy;
                 
@@ -679,7 +745,6 @@
         }
 
         // --- 프리뷰 애니메이션 루프 ---
-        // 여러 GIF의 각기 다른 프레임을 글로벌 시간에 맞춰 재생 (자연스러운 동기화)
         function renderPreviewLoop() {
             const now = Date.now();
             const elapsed = now - animationStartTime;
@@ -688,7 +753,6 @@
                 if (!item.previewCanvas) return;
                 const ctx = item.previewCanvas.getContext('2d');
                 
-                // 현재 시간에 해당하는 프레임 찾기
                 const tLocal = elapsed % item.totalDuration;
                 let currentT = 0;
                 let currentFrame = item.frames[0];
@@ -726,31 +790,35 @@
             const bgColor = document.getElementById('bgColor').value;
             // const isTransparent = document.getElementById('isTransparent').checked;
 
+            // 출력 배율 적용 로직
+            const outputScale = (parseInt(outputScaleInput.value) || 100) / 100;
+            const finalWidth = Math.round(workspaceParams.width * outputScale);
+            const finalHeight = Math.round(workspaceParams.height * outputScale);
+
             const gifOptions = {
                 workers: 2,
                 quality: 10,
-                width: workspaceParams.width,
-                height: workspaceParams.height,
+                width: finalWidth,
+                height: finalHeight,
                 workerScript: gifWorkerUrl || undefined
             };
 
             // if (isTransparent) {
-            //     // gif.js는 16진수 색상 코드를 투명 색상으로 인식합니다.
             //     gifOptions.transparent = bgColor; 
             // }
 
             const gif = new GIF(gifOptions);
 
             const tempCanvas = document.createElement('canvas');
-            tempCanvas.width = workspaceParams.width;
-            tempCanvas.height = workspaceParams.height;
+            tempCanvas.width = finalWidth;
+            tempCanvas.height = finalHeight;
             const tempCtx = tempCanvas.getContext('2d', { willReadFrequently: true });
 
             // 글로벌 시간축(t)을 기준으로 프레임 스텝 진행
             for (let t = 0; t < totalDuration; t += delayMs) {
                 // 배경 채우기
                 tempCtx.fillStyle = bgColor;
-                tempCtx.fillRect(0, 0, workspaceParams.width, workspaceParams.height);
+                tempCtx.fillRect(0, 0, finalWidth, finalHeight);
 
                 // z-index 순으로 정렬하여 렌더링
                 const sortedItems = [...gifItems].sort((a, b) => a.zIndex - b.zIndex);
@@ -768,11 +836,11 @@
                         }
                     }
 
-                    // 스케일링이 적용된 상태로 메인 캔버스에 그리기
+                    // 출력 배율이 적용된 크기와 좌표로 캔버스에 그리기
                     tempCtx.drawImage(
                         currentFrame.canvas,
                         0, 0, item.originalWidth, item.originalHeight,
-                        item.x, item.y, item.width, item.height
+                        item.x * outputScale, item.y * outputScale, item.width * outputScale, item.height * outputScale
                     );
                 });
 
@@ -788,7 +856,7 @@
                 const url = URL.createObjectURL(blob);
                 resultImg.src = url;
                 downloadBtn.href = url;
-                downloadBtn.download = 'combined.gif';
+                downloadBtn.download = 'ccfolia_cutin.gif';
                 
                 resultContainer.classList.remove('hidden');
                 generateBtn.disabled = false;
